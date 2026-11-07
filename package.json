@@ -1,0 +1,23 @@
+{
+  "name": "nutsplit",
+  "version": "0.1.0",
+  "description": "Settle Cashu ecash a podcast receives to the feed's podcast:value split recipients",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "test": "node --test --test-reporter=spec 'test/*.test.ts'",
+    "typecheck": "tsc --noEmit",
+    "demo": "node demo/run.ts"
+  },
+  "dependencies": {
+    "@cashu/cashu-ts": "4.13.0",
+    "fast-xml-parser": "5.12.0"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.4",
+    "typescript": "6.0.3"
+  }
+}
