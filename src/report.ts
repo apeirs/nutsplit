@@ -71,7 +71,7 @@ const h = (s: unknown) => escapeXml(String(s ?? ''));
 
 export function ledgerHtml(data: ReturnType<typeof ledgerJson>): string {
   const rows = data.recipients.map((r) => `<tr>
-    <td><b>${h(r.name)}</b><br><code>${h(r.address.length > 30 ? r.address.slice(0, 14) + '…' + r.address.slice(-8) : r.address)}</code>${r.custom_value ? ` <span class="muted">${h(r.custom_key)}=${h(r.custom_value.length > 20 ? '…' + r.custom_value.slice(-16) : r.custom_value)}</span>` : ''}${r.fee_payer ? ' <span class="tag">pays fees</span>' : ''}</td>
+    <td><b>${h(r.name)}</b><br><code>${h(r.address.length > 30 ? r.address.slice(0, 14) + '…' + r.address.slice(-8) : r.address)}</code>${r.custom_value && r.paid_by === 'keysend' ? ` <span class="muted">${h(r.custom_key)}=${h(r.custom_value.length > 20 ? '…' + r.custom_value.slice(-16) : r.custom_value)}</span>` : ''}${r.fee_payer ? ' <span class="tag">pays fees</span>' : ''}</td>
     <td class="n">${fmtMsat(r.credited_msat)}</td>
     <td class="n">${r.paid_sats}</td>
     <td class="n">${r.fees_sats}</td>
@@ -85,7 +85,7 @@ export function ledgerHtml(data: ReturnType<typeof ledgerJson>): string {
     <td>${p.payment_hash ? `<code title="${h(p.payment_hash)}">${h(p.payment_hash.slice(0, 16))}…</code>` : ''}${p.preimage ? `<br><span class="muted">preimage ${h(p.preimage.slice(0, 12))}…</span>` : ''}</td>
     <td class="muted">${p.state === 'sent' && p.memo_carried === false ? 'no_memo: provider takes no comment' : h(p.error ?? '')}</td>
   </tr>`).join('');
-  const credits = data.credits.slice(0, 50).map((c) => `<tr>
+  const credits = data.credits.slice(0, 20).map((c) => `<tr>
     <td>${h(c.created_at.slice(11, 19))}</td><td>${h(c.kind)}</td><td class="n">${c.gross_sats}</td>
     <td>${h((c.episode_title ?? 'show').slice(0, 60))}${c.value_source === 'channel' ? ' <span class="muted">(channel split)</span>' : ''}</td><td>${h(c.message ?? '')}</td>
   </tr>`).join('');
@@ -97,7 +97,7 @@ export function ledgerHtml(data: ReturnType<typeof ledgerJson>): string {
 @media (prefers-color-scheme:dark){:root{--bg:#141413;--fg:#ecebe6;--muted:#a19f97;--line:#2e2d2a;--card:#1c1c1a;--accent:#f0b65a;--ok:#6fcf97;--warn:#f2994a;--unk:#bb8fe8}}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.45 system-ui,-apple-system,Segoe UI,sans-serif}
 main{max-width:1060px;margin:0 auto;padding:24px 16px 48px}h1{font-size:22px;margin:0 0 4px}h2{font-size:16px;margin:28px 0 8px}
-.muted{color:var(--muted)}code{font:12px ui-monospace,SFMono-Regular,Menlo,monospace}
+a{color:var(--accent)}.muted{color:var(--muted)}code{font:12px ui-monospace,SFMono-Regular,Menlo,monospace}
 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:16px 0}
 .card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px 12px}.card b{display:block;font-size:20px}
 .wrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--card)}
@@ -120,7 +120,7 @@ ul.rules{padding-left:18px}ul.rules li{margin:2px 0}
 <p class="muted">Amounts in sats; credited and owed to the millisat. Fee policy: <b>${h(data.fee_policy)}</b>${data.fee_policy === 'show' ? ' (the show\'s own balance carries every fee, so other recipients get their exact share)' : ''}.</p>
 <h2>Payouts</h2>
 <div class="wrap"><table><thead><tr><th>#</th><th>To</th><th class="n">Sats</th><th>State</th><th class="n">Fee</th><th>Payment hash</th><th>Note</th></tr></thead><tbody>${payouts || '<tr><td colspan="7" class="muted">none yet</td></tr>'}</tbody></table></div>
-<h2>Latest payments in</h2>
+<h2>Latest payments in <span class="muted">(${Math.min(20, data.credits.length)} of ${t.credits}; the latest 200 in the JSON)</span></h2>
 <div class="wrap"><table><thead><tr><th>Time (UTC)</th><th>Kind</th><th class="n">Sats</th><th>Episode</th><th>Message</th></tr></thead><tbody>${credits || '<tr><td colspan="5" class="muted">none yet</td></tr>'}</tbody></table></div>
 <h2>Rules</h2>
 <ul class="rules muted">
