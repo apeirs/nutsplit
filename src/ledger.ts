@@ -335,13 +335,31 @@ export class Ledger {
     });
   }
 
-  /** Provably not paid (quote UNPAID and every input still unspent): the amount goes back to the recipient. */
-  settleFailed(id: number, error: string): void {
+  /**
+   * Provably not paid (quote UNPAID and every input still unspent): the
+   * amount goes back to the recipient. When the melt request got no answer,
+   * the caller first swaps the inputs (`swapped`), so a request still on its
+   * way to the mint can no longer spend them; that swap's fee is a payout fee.
+   */
+  settleFailed(id: number, error: string, swapped?: { fresh: StoredProof[]; feePayer: Recipient | null }): void {
     this.tx(() => {
       const p = this.mustPayout(id, 'unknown');
       const t = now();
-      this.db.prepare(`UPDATE payouts SET state = 'failed', error = ?, fee_msat = 0, updated_at = ? WHERE id = ?`).run(error, t, id);
-      this.db.prepare(`UPDATE proofs SET state = 'unspent', payout_id = NULL, updated_at = ? WHERE payout_id = ? AND state = 'reserved'`).run(t, id);
+      let feeMsat = 0;
+      if (swapped) {
+        feeMsat = ((p.inputs_sat ?? 0) - swapped.fresh.reduce((s, x) => s + x.amount, 0)) * 1000;
+        if (feeMsat < 0) throw new Error(`payout ${id}: swap returned more than its inputs`);
+        this.db.prepare(`UPDATE proofs SET state = 'spent', updated_at = ? WHERE payout_id = ? AND state = 'reserved'`).run(t, id);
+        this.addProofs(p.mint_url!, swapped.fresh);
+        if (feeMsat > 0) {
+          const payerKey = swapped.feePayer ? this.upsertRecipient(swapped.feePayer) : p.recipient_key;
+          this.db.prepare(`INSERT INTO entries (podcast_guid, recipient_key, kind, msat, payout_id, created_at)
+            VALUES (?, ?, 'payout_fee', ?, ?, ?)`).run(p.podcast_guid, payerKey, -feeMsat, id, t);
+        }
+      } else {
+        this.db.prepare(`UPDATE proofs SET state = 'unspent', payout_id = NULL, updated_at = ? WHERE payout_id = ? AND state = 'reserved'`).run(t, id);
+      }
+      this.db.prepare(`UPDATE payouts SET state = 'failed', error = ?, fee_msat = ?, updated_at = ? WHERE id = ?`).run(error, feeMsat, t, id);
       this.db.prepare(`INSERT INTO entries (podcast_guid, recipient_key, kind, msat, payout_id, created_at)
         VALUES (?, ?, 'release', ?, ?, ?)`).run(p.podcast_guid, p.recipient_key, p.amount_msat, id, t);
     });
