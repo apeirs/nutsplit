@@ -76,6 +76,7 @@ export function batchComment(ledger: Ledger, ctx: Pick<SettleContext, 'show' | '
       .filter(Boolean).join(', '),
     msgs.join(' '),
   ].filter(Boolean);
+  if (!rows.length) parts.push('remainder of earlier payments');
   const text = `nutsplit: ${parts.join(' · ')}`;
   if (!ctx.publicUrl) return text;
   const action = boosts.length ? 'boost' : 'stream';
