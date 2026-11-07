@@ -240,3 +240,7 @@ nutsplit needs 2 sat of reserve (1 %). nutsplit has not been run against a mainn
 - **Fee payer.** The show's channel-level recipient pays fees even on episodes where it is
   not in the split; its balance can go negative and is netted against its later income.
 - The served feed is read once at start; one process per show; the rate limit is in memory.
+
+## License
+
+MIT. Parts of `src/split.ts` and `src/lnurl.ts` are ports of Sovereigncast code from Nodesignal's [podcasting_tools](https://gitlab.com/nodesignal/podcasting_tools) (MIT, Copyright (c) 2026 Nodesignal); both notices are in `LICENSE`.
