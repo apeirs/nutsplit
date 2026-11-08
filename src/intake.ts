@@ -26,6 +26,8 @@ export interface IncomingPayment {
   ts?: number;
   sender?: string;
   rail: string;
+  /** Signs P2PK-locked proofs at the swap (NIP-61 nutzaps); never sent anywhere. */
+  privkey?: string;
 }
 
 export type IntakeResult =
@@ -73,8 +75,10 @@ export async function receivePayment(ctx: IntakeContext, p: IncomingPayment): Pr
 
   let fresh;
   try {
-    fresh = await mint.receive(proofs as any);
+    fresh = await mint.receive(proofs as any, p.privkey ? { privkey: p.privkey } : undefined);
   } catch (e) {
+    // No answer is not a refusal: the caller may hold the proofs and retry.
+    if (mint.classifySwapError(e) === 'no_answer') return fail(503, 'unavailable');
     const text = String((e as Error)?.message ?? e).toLowerCase();
     if (text.includes('spent')) return fail(400, 'already_spent');
     if (text.includes('insufficient') || (text.includes('fee') && text.includes('reserve'))) return fail(400, 'amount_too_small');

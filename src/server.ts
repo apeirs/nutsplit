@@ -4,7 +4,7 @@
 //   POST /pay/<podcast_guid>[?episode=<item guid>&action=stream|boost&ts=<s>]
 //   GET  /creq/<podcast_guid>          the creqA + the <podcast:txt> line
 //   GET  /ledger/<podcast_guid>        HTML, or JSON with ?format=json / Accept
-//   GET  /shows/<podcast_guid>/ecash   capability JSON (Listener API v1 shape)
+//   GET  /shows/<podcast_guid>/ecash   capability JSON (Listener API v1 shape, + nutzap when on)
 import { createServer, type IncomingMessage, type ServerResponse, type Server } from 'node:http';
 import { createHash } from 'node:crypto';
 import { PaymentRequest } from '@cashu/cashu-ts';
@@ -14,6 +14,8 @@ import { ledgerHtml, ledgerJson } from './report.ts';
 import { toStored, type MintClient } from './mint.ts';
 import type { Show } from './accrue.ts';
 import type { Ledger } from './ledger.ts';
+import { npub } from './nostr.ts';
+import type { NutzapIdentity } from './nutzap.ts';
 
 export interface ServerOptions {
   ledger: Ledger;
@@ -24,6 +26,8 @@ export interface ServerOptions {
   /** Requests per minute per IP on /pay, as Sovereigncast's 10/min; 0 = off. */
   rateLimitPerMin?: number;
   log?: (line: string) => void;
+  /** When nutzaps are received (NIP-61), what the capability document advertises. */
+  nutzap?: NutzapIdentity;
 }
 
 const MAX_BODY = 256 * 1024;
@@ -115,8 +119,10 @@ export function createNutsplitServer(o: ServerOptions): Server {
         const show = showOf(parts[1]);
         if (!show) return err(res, 404, 'unknown_show', 'no such podcast guid here');
         const creq = feedPaymentRequest(`${base(req)}/pay/${show.podcastGuid}`, show.feed.title);
+        const z = o.nutzap;
         return send(res, 200, { ecash: { nut18: creq, split_settlement: true, accepted_mints: o.mints.map((m) => m.mintUrl),
-          ledger_url: `${base(req)}/ledger/${show.podcastGuid}` } });
+          ledger_url: `${base(req)}/ledger/${show.podcastGuid}`,
+          ...(z ? { nutzap: { npub: npub(z.nostrPubkey), p2pk_pubkey: z.p2pkPubkey, relays: z.relays, mints: z.mints } } : {}) } });
       }
 
       if (req.method === 'GET' && parts[0] === 'ledger' && parts.length === 2) {

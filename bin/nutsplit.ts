@@ -4,21 +4,27 @@ import { parseArgs } from 'node:util';
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { Wallet, MintQuoteState, deserializeProofs, serializeProofs, type Proof } from '@cashu/cashu-ts';
-import { openSettler, isTestMint } from '../src/config.ts';
+import { openSettler, isTestMint, nutzapIdentity, mintsWithoutP2pk } from '../src/config.ts';
 import { createNutsplitServer } from '../src/server.ts';
 import { settle, type SettleReport } from '../src/settle.ts';
 import { feedLine, feedPaymentRequest } from '../src/creq.ts';
 import { ledgerJson } from '../src/report.ts';
 import { payShow } from '../src/listener.ts';
+import { startNutzapIntake } from '../src/nutzap-intake.ts';
+import { nutzapInfoTemplate, DEFAULT_BOOST_THRESHOLD_SAT } from '../src/nutzap.ts';
+import { npub } from '../src/nostr.ts';
 
 const HELP = `nutsplit: settle Cashu a podcast receives to its podcast:value split
 
   nutsplit serve     --feed <https URL|file> --mint <url> [--mint <url>…] [--data ./data]
                      [--port 8787] [--public-url URL] [--threshold 210] [--settle-every 300]
                      [--fee-policy show|recipient] [--lnurl-map addr=url …] [--rate-limit 10]
+                     [--nostr-pubkey npub… --nutzap-relay wss://… [--nutzap-relay …] [--boost-threshold 100]]
   nutsplit settle    --feed … --mint … [--data ./data] [--threshold 210] [--force] [--lnurl-map …]
   nutsplit ledger    --feed … --mint … [--data ./data]
   nutsplit feed-line --public-url URL --podcast-guid GUID [--title T]
+  nutsplit nutzap-info --nostr-pubkey npub… --nutzap-relay wss://… --mint <url> [--data ./data]
+                     the kind:10019 for the show's Nostr key to sign and publish, and the feed line
   nutsplit pay       --creq creqA… --mint <test mint> --sats N [--episode GUID] [--stream] [--ts S]
                      [--msg TEXT] [--fund N] [--data ./data]   (a test listener)
 `;
@@ -34,6 +40,8 @@ const { values: v, positionals } = parseArgs({
     'podcast-guid': { type: 'string' }, title: { type: 'string' }, creq: { type: 'string' }, sats: { type: 'string' },
     episode: { type: 'string' }, stream: { type: 'boolean', default: false }, ts: { type: 'string' }, msg: { type: 'string' },
     fund: { type: 'string' }, help: { type: 'boolean', short: 'h', default: false },
+    'nostr-pubkey': { type: 'string' }, 'nutzap-relay': { type: 'string', multiple: true },
+    'boost-threshold': { type: 'string', default: String(DEFAULT_BOOST_THRESHOLD_SAT) },
   },
 });
 
@@ -58,6 +66,17 @@ async function settler() {
     podcastGuid: v['podcast-guid'], lnurlMap: lnurlMap(), allowRealLnurl: v['allow-real-lnurl'] });
 }
 
+/** Nutzap receiving is on when relays are given; it needs the show's public Nostr key. */
+async function nutzapOpts() {
+  const relays = v['nutzap-relay'] ?? [];
+  if (!relays.length) return undefined;
+  if (!v['nostr-pubkey']) die('--nutzap-relay needs --nostr-pubkey (the show\'s npub, which nutzaps p-tag)');
+  if (!v.mint?.length) die('--mint is required');
+  const unsafe = await mintsWithoutP2pk(v.mint!);
+  if (unsafe.length) die(`nutzaps need mints that enforce P2PK (NUT-11); these do not: ${unsafe.join(', ')}`);
+  return nutzapIdentity({ nostrPubkey: v['nostr-pubkey']!, relays, mints: v.mint!, dataDir: v.data! });
+}
+
 function printReport(r: SettleReport) {
   for (const x of r.resolved) console.log(`resolved payout #${x.payoutId}: ${x.state} (${x.note})`);
   for (const p of r.payouts) console.log(`${p.outcome.padEnd(8)} ${String(p.amountSat).padStart(6)} sat  ${p.name}${p.feeSat !== undefined ? `  fee ${p.feeSat}` : ''}${p.reason ? `  (${p.reason})` : ''}`);
@@ -66,8 +85,15 @@ function printReport(r: SettleReport) {
 if (cmd === 'serve') {
   const s = await settler();
   const threshold = Number(v.threshold);
+  const log = (l: string) => console.log(new Date().toISOString(), l);
+  const zap = await nutzapOpts();
   const server = createNutsplitServer({ ledger: s.ledger, shows: [s.show], mints: s.mints, publicUrl: v['public-url'],
-    rateLimitPerMin: Number(v['rate-limit']), log: (l) => console.log(new Date().toISOString(), l) });
+    rateLimitPerMin: Number(v['rate-limit']), log, nutzap: zap?.identity });
+  if (zap) {
+    await startNutzapIntake({ ledger: s.ledger, show: s.show, mints: s.mints, identity: zap.identity, p2pkPrivkey: zap.privkey,
+      boostThresholdSat: Number(v['boost-threshold']), log });
+    log(`nutzaps: listening for kind:9321 to ${npub(zap.identity.nostrPubkey)} on ${zap.identity.relays.join(', ')}`);
+  }
   server.listen(Number(v.port), '127.0.0.1', () => console.log(`nutsplit for ${s.show.feed.title} on http://127.0.0.1:${v.port} (ledger: /ledger/${s.show.podcastGuid})`));
   const every = Number(v['settle-every']);
   if (every > 0) {
@@ -96,9 +122,17 @@ if (cmd === 'serve') {
     console.log(`${r.name.padEnd(24)} credited ${(r.credited_msat / 1000).toFixed(3).padStart(10)}  paid ${String(r.paid_sats).padStart(7)}  owed ${(r.owed_msat / 1000).toFixed(3).padStart(10)}  ${r.reachable ? '' : 'unpayable by mint (keysend)'}`);
   }
   console.log(`received ${d.totals.received_sats} sat, paid ${d.totals.paid_sats} sat, books ${d.reconcile.ok ? 'match' : 'do NOT match'} the wallet`);
+  const zc = Object.entries(d.nutzaps.counts).filter(([, n]) => n);
+  if (zc.length) console.log(`nutzaps: ${zc.map(([k, n]) => `${n} ${k}`).join(', ')}`);
 } else if (cmd === 'feed-line') {
   if (!v['public-url'] || !v['podcast-guid']) die('--public-url and --podcast-guid are required');
   console.log(feedLine(feedPaymentRequest(`${v['public-url']!.replace(/\/+$/, '')}/pay/${v['podcast-guid']}`, v.title)));
+} else if (cmd === 'nutzap-info') {
+  const zap = (await nutzapOpts()) ?? die('--nutzap-relay is required');
+  console.log('# kind:10019 for the show\'s Nostr key to sign and publish to its relays (nutsplit holds no Nostr key):');
+  console.log(JSON.stringify({ ...nutzapInfoTemplate(zap.identity), pubkey: zap.identity.nostrPubkey }, null, 2));
+  console.log('# and in the feed, so apps find the npub (CASHU_STREAMING.md Route A):');
+  console.log(`<podcast:txt purpose="nostr">${npub(zap.identity.nostrPubkey)}</podcast:txt>`);
 } else if (cmd === 'pay') {
   if (!v.creq || !v.sats || !v.mint?.[0]) die('--creq, --mint and --sats are required');
   const mintUrl = v.mint![0];

@@ -48,6 +48,46 @@ export interface StoredProof {
   [k: string]: unknown;
 }
 
+/**
+ * A NIP-61 nutzap event, once its signature checked out:
+ *   claiming   being redeemed (or the process stopped half-way; see nutzap-intake.ts)
+ *   retry      the mint could not be reached; tried again later
+ *   redeemed   swapped and booked (credit_id)
+ *   rejected   failed a check (reason); the mint is never asked
+ *   spent      its proofs were spent before we asked: not ours to book
+ *   duplicate  its proofs were already booked under another credit
+ *   unknown    swapped before a crash but not booked: needs a NUT-09 restore
+ */
+export type NutzapState = 'claiming' | 'retry' | 'redeemed' | 'rejected' | 'spent' | 'duplicate' | 'unknown';
+
+export interface NutzapRow {
+  event_id: string;
+  podcast_guid: string;
+  sender: string;
+  event_created_at: number;
+  mint_url: string | null;
+  amount_sat: number | null;
+  locked: number | null;
+  state: NutzapState;
+  reason: string | null;
+  attempts: number;
+  credit_id: number | null;
+  event_json: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface NutzapSeen {
+  eventId: string;
+  podcastGuid: string;
+  sender: string;
+  createdAt: number;
+  eventJson: string;
+  mintUrl?: string;
+  amountSat?: number;
+  locked?: boolean;
+}
+
 export interface PayoutRow {
   id: number;
   podcast_guid: string;
@@ -123,6 +163,13 @@ CREATE TABLE IF NOT EXISTS proofs (
   payout_id INTEGER, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS proofs_state ON proofs(mint_url, state);
 CREATE TABLE IF NOT EXISTS counters (keyset_id TEXT PRIMARY KEY, next INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS nutzaps (
+  event_id TEXT PRIMARY KEY, podcast_guid TEXT NOT NULL, sender TEXT NOT NULL, event_created_at INTEGER NOT NULL,
+  mint_url TEXT, amount_sat INTEGER, locked INTEGER,
+  state TEXT NOT NULL CHECK (state IN ('claiming','retry','redeemed','rejected','spent','duplicate','unknown')),
+  reason TEXT, attempts INTEGER NOT NULL DEFAULT 0, credit_id INTEGER REFERENCES credits(id),
+  event_json TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS nutzaps_state ON nutzaps(state);
 `;
 
 const now = () => new Date().toISOString();
@@ -456,6 +503,62 @@ export class Ledger {
     const reservedMsat = this.walletSat(undefined, 'reserved') * 1000;
     const ok = unknown === 0 ? owed === walletMsat && reservedMsat === 0 : owed + unknown <= walletMsat + reservedMsat;
     return { owedMsat: owed, walletMsat, reservedMsat, unknownMsat: unknown, ok };
+  }
+
+  // ── Nutzaps (NIP-61): one row per event id, so none is redeemed twice ────
+
+  /**
+   * Take an event for redemption: a new one, or one waiting in `retry`.
+   * Atomic, so two relays delivering the same event cannot both redeem it.
+   * Returns true if this caller now owns it (state `claiming`).
+   */
+  claimNutzap(n: NutzapSeen): boolean {
+    const t = now();
+    const res = this.db.prepare(`INSERT INTO nutzaps (event_id, podcast_guid, sender, event_created_at, mint_url, amount_sat, locked,
+        state, attempts, event_json, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'claiming', 1, ?, ?, ?)
+      ON CONFLICT(event_id) DO UPDATE SET state = 'claiming', attempts = attempts + 1, updated_at = excluded.updated_at
+      WHERE nutzaps.state = 'retry'`)
+      .run(n.eventId, n.podcastGuid, n.sender, n.createdAt, n.mintUrl ?? null, n.amountSat ?? null,
+        n.locked === undefined ? null : Number(n.locked), n.eventJson, t, t);
+    return Number(res.changes) === 1;
+  }
+
+  /** A genuine event that failed a check: written once, never retried. */
+  rejectNutzap(n: NutzapSeen, reason: string): void {
+    const t = now();
+    this.db.prepare(`INSERT INTO nutzaps (event_id, podcast_guid, sender, event_created_at, mint_url, amount_sat, locked,
+        state, reason, event_json, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, 'rejected', ?, ?, ?, ?)
+      ON CONFLICT(event_id) DO NOTHING`)
+      .run(n.eventId, n.podcastGuid, n.sender, n.createdAt, n.mintUrl ?? null, n.amountSat ?? null,
+        n.locked === undefined ? null : Number(n.locked), reason, n.eventJson, t, t);
+  }
+
+  finishNutzap(eventId: string, state: Exclude<NutzapState, 'claiming'>, o: { reason?: string; creditId?: number } = {}): void {
+    this.db.prepare(`UPDATE nutzaps SET state = ?, reason = ?, credit_id = COALESCE(?, credit_id), updated_at = ? WHERE event_id = ?`)
+      .run(state, o.reason ?? null, o.creditId ?? null, now(), eventId);
+  }
+
+  nutzap(eventId: string): NutzapRow | undefined {
+    return this.db.prepare('SELECT * FROM nutzaps WHERE event_id = ?').get(eventId) as NutzapRow | undefined;
+  }
+
+  nutzapsIn(state: NutzapState, podcastGuid?: string): NutzapRow[] {
+    return (podcastGuid
+      ? this.db.prepare('SELECT * FROM nutzaps WHERE state = ? AND podcast_guid = ? ORDER BY event_created_at').all(state, podcastGuid)
+      : this.db.prepare('SELECT * FROM nutzaps WHERE state = ? ORDER BY event_created_at').all(state)) as unknown as NutzapRow[];
+  }
+
+  nutzaps(podcastGuid: string, limit = 200): NutzapRow[] {
+    return this.db.prepare('SELECT * FROM nutzaps WHERE podcast_guid = ? ORDER BY event_created_at DESC, event_id LIMIT ?')
+      .all(podcastGuid, limit) as unknown as NutzapRow[];
+  }
+
+  nutzapCounts(podcastGuid: string): Record<NutzapState, number> {
+    const out = { claiming: 0, retry: 0, redeemed: 0, rejected: 0, spent: 0, duplicate: 0, unknown: 0 };
+    for (const r of this.db.prepare('SELECT state, COUNT(*) AS n FROM nutzaps WHERE podcast_guid = ? GROUP BY state').all(podcastGuid) as Array<{ state: NutzapState; n: number }>) {
+      out[r.state] = r.n;
+    }
+    return out;
   }
 
   // ── NUT-13 counters (deterministic secrets survive a restart) ─────────────

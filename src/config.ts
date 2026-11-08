@@ -5,6 +5,8 @@ import { join } from 'node:path';
 import { parseFeed, type Feed } from './feed.ts';
 import { Ledger } from './ledger.ts';
 import { CashuMint } from './mint.ts';
+import { newSecretKey, publicKeyOf, toHexPubkey } from './nostr.ts';
+import type { NutzapIdentity } from './nutzap.ts';
 import type { LnurlDeps } from './lnurl.ts';
 import type { FeePolicy, Show } from './accrue.ts';
 
@@ -40,6 +42,43 @@ export function loadSeed(dataDir: string): Uint8Array {
   const file = join(dataDir, 'seed.secret');
   if (!existsSync(file)) writeFileSync(file, randomBytes(64).toString('hex') + '\n', { mode: 0o600 });
   return Buffer.from(readFileSync(file, 'utf8').trim(), 'hex');
+}
+
+/**
+ * The key nutzaps are locked to (NIP-61 kind:10019 `pubkey`), created once in
+ * the data directory, mode 0600. A key of its own: never the show's Nostr key.
+ */
+export function loadNutzapKey(dataDir: string): { privkey: string; pubkey: string } {
+  mkdirSync(dataDir, { recursive: true });
+  const file = join(dataDir, 'nutzap.secret');
+  if (!existsSync(file)) writeFileSync(file, newSecretKey() + '\n', { mode: 0o600 });
+  const privkey = readFileSync(file, 'utf8').trim();
+  if (!/^[0-9a-f]{64}$/.test(privkey)) throw new Error(`${file}: not a 32-byte hex key`);
+  return { privkey, pubkey: '02' + publicKeyOf(privkey) };
+}
+
+export function nutzapIdentity(o: { nostrPubkey: string; relays: string[]; mints: string[]; dataDir: string }): { identity: NutzapIdentity; privkey: string } {
+  const { privkey, pubkey } = loadNutzapKey(o.dataDir);
+  const nostrPubkey = toHexPubkey(o.nostrPubkey);
+  if (pubkey.slice(2) === nostrPubkey) throw new Error('the nutzap key must not be the show\'s Nostr key (NIP-61)');
+  for (const r of o.relays) if (!/^wss?:\/\//.test(r)) throw new Error(`relay URL must be wss:// (or ws:// for a local relay): ${r}`);
+  return { identity: { nostrPubkey, p2pkPubkey: pubkey, mints: o.mints.map((m) => m.replace(/\/+$/, '')), relays: o.relays }, privkey };
+}
+
+/**
+ * Mints listed for nutzaps must enforce P2PK (NUT-11): a mint that does not
+ * would hand the proofs in a public kind:9321 to any reader (NUT-11
+ * "Caution"; Sovereigncast lists only such mints). Returns the ones that don't.
+ */
+export async function mintsWithoutP2pk(urls: string[]): Promise<string[]> {
+  const { Wallet } = await import('@cashu/cashu-ts');
+  const out: string[] = [];
+  for (const url of urls) {
+    const w = new Wallet(url.replace(/\/+$/, ''));
+    await w.loadMint();
+    if (!w.getMintInfo().isSupported(11).supported) out.push(url);
+  }
+  return out;
 }
 
 export function isTestMint(url: string): boolean {

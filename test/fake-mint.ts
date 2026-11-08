@@ -1,7 +1,8 @@
 // An in-memory mint for settlement tests. Fees like testnut's: 100 ppk per
 // input, Lightning reserve max(2 sat, 1 %), the payment itself costs 1 sat.
 import { randomBytes } from 'node:crypto';
-import type { MintClient, MeltQuote, MeltOutcome, MeltErrorKind, MeltState } from '../src/mint.ts';
+import { getSecretKind, isP2PKSpendAuthorised, signP2PKProofs } from '@cashu/cashu-ts';
+import { toProofs, type MintClient, type MeltQuote, type MeltOutcome, type MeltErrorKind, type MeltState } from '../src/mint.ts';
 import type { StoredProof } from '../src/ledger.ts';
 
 export class MintAnswered extends Error {}
@@ -116,9 +117,24 @@ export class FakeMint implements MintClient {
     return proofs.map((p) => (this.spent.has(p.secret) ? 'SPENT' : this.pending.has(p.secret) ? 'PENDING' : 'UNSPENT') as 'SPENT' | 'PENDING' | 'UNSPENT');
   }
 
-  async receive(proofs: any[]): Promise<StoredProof[]> {
+  /** The mint cannot be reached: every swap throws as a dropped connection would. */
+  down = false;
+
+  async receive(proofs: any[], opts?: { privkey?: string }): Promise<StoredProof[]> {
     this.calls.push('swap');
+    if (this.down) throw new NoAnswer('fetch failed: ECONNREFUSED');
     if (proofs.some((p) => this.spent.has(p.secret))) throw new MintAnswered('Token already spent');
+    // NUT-11 as a mint enforces it: a P2PK input needs a valid signature by its key.
+    const isP2PK = (s: string) => { try { return getSecretKind(s) === 'P2PK'; } catch { return false; } };
+    if (proofs.some((p) => isP2PK(p.secret))) {
+      let signed;
+      try {
+        signed = opts?.privkey ? signP2PKProofs(toProofs(proofs), opts.privkey) : toProofs(proofs);
+      } catch {
+        signed = toProofs(proofs);
+      }
+      if (!signed.every((p) => !isP2PK(p.secret) || isP2PKSpendAuthorised(p))) throw new MintAnswered('Witness signatures not provided or invalid');
+    }
     for (const p of proofs) this.spent.add(p.secret);
     const total = proofs.reduce((s, p) => s + Number(p.amount), 0);
     return FakeMint.denominate(total - this.feesForInputs(proofs));
@@ -126,6 +142,10 @@ export class FakeMint implements MintClient {
 
   async invalidDleq() {
     return 0;
+  }
+
+  classifySwapError(e: unknown): 'mint_answered' | 'no_answer' {
+    return e instanceof NoAnswer ? 'no_answer' : 'mint_answered';
   }
 
   classifyMeltError(e: unknown): MeltErrorKind {

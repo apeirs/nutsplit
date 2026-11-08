@@ -2,7 +2,7 @@
 // behind an interface so the settlement logic can be tested against a fake
 // mint, and a cashu-ts 4.13 implementation of it.
 import {
-  Wallet, OutputData, MeltQuoteState, MintOperationError, HttpResponseError, MeltChangeError,
+  Wallet, OutputData, MeltQuoteState, MintOperationError, HttpResponseError, MeltChangeError, NetworkError,
   deserializeProofs, serializeProofs, type Proof, type ProofLike, type CounterSource, type CounterRange,
 } from '@cashu/cashu-ts';
 import type { Ledger, StoredProof } from './ledger.ts';
@@ -38,12 +38,14 @@ export interface MintClient {
   completeMelt(preview: unknown): Promise<MeltOutcome>;
   changeFromSignatures(outputDataJson: string, sigs: unknown[]): Promise<StoredProof[]>;
   checkProofStates(proofs: StoredProof[]): Promise<Array<'UNSPENT' | 'PENDING' | 'SPENT'>>;
-  /** Swap incoming (or our own) proofs for fresh ones. */
-  receive(proofs: ProofLike[]): Promise<StoredProof[]>;
+  /** Swap incoming (or our own) proofs for fresh ones; `privkey` signs P2PK-locked inputs (NUT-11). */
+  receive(proofs: ProofLike[], opts?: { privkey?: string }): Promise<StoredProof[]>;
   /** NUT-12: count of proofs whose DLEQ does not verify (proofs without one pass). */
   invalidDleq(proofs: ProofLike[]): Promise<number>;
   feesForInputs(proofs: Array<{ id: string }>): number;
   classifyMeltError(e: unknown): MeltErrorKind;
+  /** A failed swap: the mint refused (or we never got as far as asking), or it could not be reached. */
+  classifySwapError(e: unknown): 'mint_answered' | 'no_answer';
 }
 
 export function toStored(proofs: Proof[]): StoredProof[] {
@@ -146,8 +148,8 @@ export class CashuMint implements MintClient {
     return states.map((s) => s.state as 'UNSPENT' | 'PENDING' | 'SPENT');
   }
 
-  async receive(proofs: ProofLike[]): Promise<StoredProof[]> {
-    return toStored(await this.wallet.receive(proofs));
+  async receive(proofs: ProofLike[], opts?: { privkey?: string }): Promise<StoredProof[]> {
+    return toStored(await this.wallet.receive(proofs, opts?.privkey ? { privkey: opts.privkey } : undefined));
   }
 
   async invalidDleq(proofs: ProofLike[]): Promise<number> {
@@ -157,6 +159,14 @@ export class CashuMint implements MintClient {
 
   feesForInputs(proofs: Array<{ id: string }>): number {
     return this.wallet.getFeesForProofs(proofs).toNumber();
+  }
+
+  classifySwapError(e: unknown): 'mint_answered' | 'no_answer' {
+    // Unlike a melt, a failed swap moves nothing: only a dead connection, a
+    // timeout or a 5xx is worth a retry; anything else will fail the same way.
+    if (e instanceof NetworkError) return 'no_answer';
+    if (e instanceof HttpResponseError && !(e instanceof MintOperationError) && e.status >= 500) return 'no_answer';
+    return 'mint_answered';
   }
 
   classifyMeltError(e: unknown): MeltErrorKind {

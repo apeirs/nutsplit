@@ -4,6 +4,7 @@
 import { escapeXml } from './creq.ts';
 import { feePayerOf, type Show } from './accrue.ts';
 import { isKeysend, isLnaddress, recipientKey } from './split.ts';
+import { npub } from './nostr.ts';
 import type { Ledger } from './ledger.ts';
 
 const sat = (msat: number) => Math.floor(msat / 1000);
@@ -47,8 +48,18 @@ export function ledgerJson(ledger: Ledger, show: Show) {
   }));
   const credits = ledger.credits(guid, 200).map((c) => ({
     id: c.id, kind: c.kind, episode_guid: c.episode_guid, episode_title: c.episode_title, gross_sats: sat(c.gross_msat),
-    intake_fee_sats: sat(c.intake_fee_msat), message: c.message, rail: c.rail, value_source: c.value_source, created_at: c.created_at,
+    intake_fee_sats: sat(c.intake_fee_msat), message: c.message, sender: c.sender, rail: c.rail, value_source: c.value_source, created_at: c.created_at,
   }));
+  const zapCounts = ledger.nutzapCounts(guid);
+  const nutzaps = {
+    counts: zapCounts,
+    // Each nutzap event and what became of it; the event id finds it on any relay.
+    recent: ledger.nutzaps(guid, 200).map((z) => ({
+      event_id: z.event_id, sender: npub(z.sender), event_created_at: z.event_created_at, mint_url: z.mint_url,
+      amount_sats: z.amount_sat, locked: z.locked === null ? null : Boolean(z.locked), state: z.state, reason: z.reason,
+      credit_id: z.credit_id, attempts: z.attempts, updated_at: z.updated_at,
+    })),
+  };
   return {
     podcast_guid: guid,
     title: show.feed.title,
@@ -63,6 +74,7 @@ export function ledgerJson(ledger: Ledger, show: Show) {
     recipients,
     payouts,
     credits,
+    nutzaps,
   };
 }
 
@@ -86,9 +98,18 @@ export function ledgerHtml(data: ReturnType<typeof ledgerJson>): string {
     <td class="muted">${p.state === 'sent' && p.memo_carried === false ? 'no_memo: provider takes no comment' : h(p.error ?? '')}</td>
   </tr>`).join('');
   const credits = data.credits.slice(0, 20).map((c) => `<tr>
-    <td>${h(c.created_at.slice(11, 19))}</td><td>${h(c.kind)}</td><td class="n">${c.gross_sats}</td>
+    <td>${h(c.created_at.slice(11, 19))}</td><td>${h(c.kind)}${c.rail === 'nip61' ? ' <span class="muted">nutzap</span>' : ''}</td><td class="n">${c.gross_sats}</td>
     <td>${h((c.episode_title ?? 'show').slice(0, 60))}${c.value_source === 'channel' ? ' <span class="muted">(channel split)</span>' : ''}</td><td>${h(c.message ?? '')}</td>
   </tr>`).join('');
+  const zc = data.nutzaps.counts;
+  const zapTotal = Object.values(zc).reduce((a, b) => a + b, 0);
+  const zapRows = data.nutzaps.recent.filter((z) => z.state !== 'redeemed').slice(0, 20).map((z) => `<tr>
+    <td><code title="${h(z.event_id)}">${h(z.event_id.slice(0, 12))}…</code></td><td><code>${h(z.sender.slice(0, 12))}…${h(z.sender.slice(-4))}</code></td>
+    <td class="n">${z.amount_sats ?? ''}</td><td><span class="st st-${z.state === 'retry' || z.state === 'unknown' ? 'unknown' : 'failed'}">${h(z.state)}</span></td><td class="muted">${h(z.reason ?? '')}</td>
+  </tr>`).join('');
+  const zapSection = zapTotal ? `<h2>Nutzaps <span class="muted">(NIP-61)</span></h2>
+<p class="muted">${zc.redeemed} redeemed and booked above${(['duplicate', 'spent', 'rejected', 'retry', 'unknown'] as const).filter((k) => zc[k]).map((k) => `, ${zc[k]} ${k}`).join('')}. Each event is redeemed at most once; the ones not booked are listed with the reason.</p>
+${zapRows ? `<div class="wrap"><table><thead><tr><th>Event</th><th>From</th><th class="n">Sats</th><th>State</th><th>Why</th></tr></thead><tbody>${zapRows}</tbody></table></div>` : ''}` : '';
   const t = data.totals;
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Split ledger · ${h(data.title)}</title>
@@ -122,6 +143,7 @@ ul.rules{padding-left:18px}ul.rules li{margin:2px 0}
 <div class="wrap"><table><thead><tr><th>#</th><th>To</th><th class="n">Sats</th><th>State</th><th class="n">Fee</th><th>Payment hash</th><th>Note</th></tr></thead><tbody>${payouts || '<tr><td colspan="7" class="muted">none yet</td></tr>'}</tbody></table></div>
 <h2>Latest payments in <span class="muted">(${Math.min(20, data.credits.length)} of ${t.credits}; the latest 200 in the JSON)</span></h2>
 <div class="wrap"><table><thead><tr><th>Time (UTC)</th><th>Kind</th><th class="n">Sats</th><th>Episode</th><th>Message</th></tr></thead><tbody>${credits || '<tr><td colspan="5" class="muted">none yet</td></tr>'}</tbody></table></div>
+${zapSection}
 <h2>Rules</h2>
 <ul class="rules muted">
 <li>Each payment is split by the episode's <code>podcast:value</code> block (the channel's if the episode has none), with value-time-splits by playback position.</li>

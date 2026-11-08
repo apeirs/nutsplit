@@ -1,0 +1,85 @@
+{
+  "about": "Recorded by demo/nutzap.ts on 2026-11-08 against testnut.cashu.space (fake sats; the proofs are redeemed). Throwaway keys; public events only. keyset: the mint public keys for the proof amounts, from GET /v1/keys/<id>, for the offline DLEQ check (NIP-61 \"Verifying a Cashu Zap\").",
+  "kind10019": {
+    "pubkey": "ab376cc8e58c29908b701da135e98f6653be4b1596e4e50b58d080ab4c38aa3a",
+    "created_at": 1794119239,
+    "kind": 10019,
+    "tags": [
+      [
+        "relay",
+        "ws://127.0.0.1:32819"
+      ],
+      [
+        "mint",
+        "https://testnut.cashu.space",
+        "sat"
+      ],
+      [
+        "pubkey",
+        "02135c297c357aaceb79d6636346bec23555e112145293a9cccde864fe8124dc23"
+      ]
+    ],
+    "content": "",
+    "id": "b008a088cd066bc55e7cc2f6d3fb63e2d682d102ad7d70062ce87f15f020139f",
+    "sig": "91cd6c8cfcdb3574a4e5b29b9230c16886f27eddec3147b2356bd371f7651d6d2499080cc86dbee3becbd3bfa54772e12890669e7201f11ab72f2378d7a3d250"
+  },
+  "kind9321": {
+    "pubkey": "e427131d9ccaee3f49eb4bab6343021c5d0951d7fe8898f1d3825004ab1837cd",
+    "created_at": 1794119243,
+    "kind": 9321,
+    "tags": [
+      [
+        "proof",
+        "{\"id\":\"017bc604aaa08e9b58804bdd552286f15d75ebdaa3d1bccc2a52fc7406b4040fda\",\"amount\":16,\"C\":\"02bdaa42b1a3104e28967d14cb3a8f877232c9c6c447a24611edb0103441408136\",\"secret\":\"[\\\"P2PK\\\",{\\\"nonce\\\":\\\"caa340cecf7d0b0fb11b9b0a5cf957bfca03ab5ec677f09a18dea1928ec2dc80\\\",\\\"data\\\":\\\"02135c297c357aaceb79d6636346bec23555e112145293a9cccde864fe8124dc23\\\",\\\"tags\\\":[]}]\",\"dleq\":{\"s\":\"9fe1cb35e9da9075d1b1567c5b80ff81a37262fb94fdefdc7fb3ac76afd787d5\",\"e\":\"e7c9f146e727699f33b3510ebf56fc44527d3778c01408846f7e9c0f701bca5e\",\"r\":\"161ddc9e2527d62641b0df7b3c06638ae89b3dff53993339dd68ff2cf54a78e7\"}}"
+      ],
+      [
+        "proof",
+        "{\"id\":\"017bc604aaa08e9b58804bdd552286f15d75ebdaa3d1bccc2a52fc7406b4040fda\",\"amount\":4,\"C\":\"03a4b3d182ebb6e220186ef8f9dcab7e9d0be026f2893ddff0dbc1268b5c262d7c\",\"secret\":\"[\\\"P2PK\\\",{\\\"nonce\\\":\\\"1d824ff84a007bd231a3deb58dbeab580b7ae2ee23987048c2c81f0758de0659\\\",\\\"data\\\":\\\"02135c297c357aaceb79d6636346bec23555e112145293a9cccde864fe8124dc23\\\",\\\"tags\\\":[]}]\",\"dleq\":{\"s\":\"83c157f9a41ae94bf6f3d8a5d9552614136bb691312a373d93aa9d204ded3ff2\",\"e\":\"7d59fe88ac953b65c99eefb2ddb68e3c195d902daf6ddf77e48326c6e7e93087\",\"r\":\"4bcd62a3763ee94eb6af3aa412dd6a031f66c93ed7d472fe8e8ad5629e68f237\"}}"
+      ],
+      [
+        "proof",
+        "{\"id\":\"017bc604aaa08e9b58804bdd552286f15d75ebdaa3d1bccc2a52fc7406b4040fda\",\"amount\":1,\"C\":\"02612a41b096e744d5fa7d60e9cf2f943b2b31927bd1db5eb443275c64245cf4b3\",\"secret\":\"[\\\"P2PK\\\",{\\\"nonce\\\":\\\"7867940575284f5b197ff3d95cc72fef40dba4da6fee5efb2a08ca76bb40d7af\\\",\\\"data\\\":\\\"02135c297c357aaceb79d6636346bec23555e112145293a9cccde864fe8124dc23\\\",\\\"tags\\\":[]}]\",\"dleq\":{\"s\":\"6f803e13880255b551689c2a5d3df1d26b9ab37c1b0f544781de73f8146a012d\",\"e\":\"d528f51f2ebda63e92d38a99cbcd57cc86b8bd24a529bbc8f69df00d30b4e8c7\",\"r\":\"b236b4a599e9099e6fe40dde41eb7f582a873866727c841ab43f579642871155\"}}"
+      ],
+      [
+        "unit",
+        "sat"
+      ],
+      [
+        "u",
+        "https://testnut.cashu.space"
+      ],
+      [
+        "p",
+        "ab376cc8e58c29908b701da135e98f6653be4b1596e4e50b58d080ab4c38aa3a"
+      ],
+      [
+        "episode",
+        "Nodesignal-Buchclub - E301 - Cryptoeconomics #7 - Valido, ergo sum - Sicherheit und Ökonomie im Netzwerk der Nodes"
+      ],
+      [
+        "episode_guid",
+        "7d3a1f3d-c709-4eaa-8f8b-2260330ee403"
+      ],
+      [
+        "ts",
+        "2520"
+      ],
+      [
+        "i",
+        "podcast:item:guid:7d3a1f3d-c709-4eaa-8f8b-2260330ee403"
+      ]
+    ],
+    "content": "Nodesignal-Buchclub - E301 - Cryptoeconomics #7 - Valido, ergo sum - Sicherheit und Ökonomie im Netzwerk der Nodes · 00:42:00 — Danke für die Folge!",
+    "id": "91b5f36ad71549f0408702734ce5c80f324e6c83fb7b36038af13f2a0569b369",
+    "sig": "2b6424943633e1aadf8bb64385f0a151d3a1cf7ed331443766c2c339214dec83e460a54cf3659e3ca5f403adb01c57e9117863a21f112f155e6e5c5493138fd6"
+  },
+  "keyset": {
+    "id": "017bc604aaa08e9b58804bdd552286f15d75ebdaa3d1bccc2a52fc7406b4040fda",
+    "unit": "sat",
+    "keys": {
+      "1": "02ad8c30cbdeba49737010f7cd86a0471a6aa02aeae4574394c1b1e2ab246db487",
+      "4": "037289e9154e954088718ae761ecc6a34220dba1f9fef25e238f845aa2840d7211",
+      "16": "030e49b6c44cc5f9e5e806f1d0466e4affc5488a5138956dbc07d97a093af35c69"
+    }
+  }
+}
