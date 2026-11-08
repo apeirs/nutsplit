@@ -2,8 +2,9 @@
 
 Pay a podcast's `podcast:value` split from the Cashu ecash the show receives.
 
-A listener's app sends ecash to the show (a NUT-18 payment request in the feed). nutsplit
-swaps it into its own wallet at once, books every sat to the episode's split recipients the
+A listener's app sends ecash to the show, either as a NUT-18 payment over HTTP (a payment
+request in the feed) or as a NIP-61 nutzap over Nostr. nutsplit swaps it into its own wallet
+at once, books every sat to the episode's split recipients the
 way the feed says, and pays each recipient in one Lightning payment (a melt) once enough has
 come together. A public ledger page shows each recipient what was booked to them, what was
 paid and what is still owed.
@@ -61,8 +62,9 @@ Node 24+ (built and tested on Node 26; TypeScript runs directly, no build step).
 
 ```bash
 npm ci
-npm test            # 73 tests, no network
+npm test            # 87 tests, no network (one relay on 127.0.0.1)
 node demo/run.ts    # the end-to-end demo below; needs network to the two test mints
+node demo/nutzap.ts # the nutzap demo (see "Nutzaps"); same test mints, a local relay
 ```
 
 Run it for a show:
@@ -88,13 +90,115 @@ stand-in.
 | `POST /pay/<podcast_guid>?episode=<item guid>&action=stream&ts=<s>` | NUT-18 payload in. `action=stream` as in CASHU_STREAMING.md, nothing for a boost. `episode` and `ts` choose the split; without them the channel block applies. Answers with Sovereigncast's table: `untrusted_mint` + `accepted_mints`, `already_redeemed` (409), `already_spent`, `amount_too_small`, `unsupported_unit`, `invalid_payload`, `unavailable` (503); plus `no_value_block` when the feed names no recipients (the listener keeps the sats). 10 requests/min per IP by default. |
 | `GET /creq/<podcast_guid>` | The NUT-18 request and the `<podcast:txt purpose="cashu">` line for the feed. |
 | `GET /ledger/<podcast_guid>` | The public ledger, HTML (light and dark) or JSON (`?format=json`), with an ETag. |
-| `GET /shows/<podcast_guid>/ecash` | `{"ecash": {"nut18": "creqA…", "split_settlement": true, …}}`, the capability shape of Listener API v1. |
+| `GET /shows/<podcast_guid>/ecash` | `{"ecash": {"nut18": "creqA…", "split_settlement": true, …}}`, the capability shape of Listener API v1. With nutzaps on, also `"nutzap": {"npub", "p2pk_pubkey", "relays", "mints"}`. |
 
 The feed record is CASHU_STREAMING.md Route B as proposed there: no amount, not
 single-use, unit `sat`, one `post` transport, no mint list (the app learns it from
 `untrusted_mint`). Sovereigncast lists that line as "proposed, not implemented"; this is a
 working reference for it. Passing `episode` and `ts` in the POST URL's query is nutsplit's
 addition.
+
+## Nutzaps (NIP-61)
+
+CASHU_STREAMING.md's Route A: the feed names the show's Nostr identity, an app reads the
+show's `kind:10019`, locks ecash to the key it lists (NUT-11 P2PK) and publishes a
+`kind:9321` to the show's relays. nutsplit subscribes to those relays, redeems each nutzap
+with its own key and books it exactly like a NUT-18 payment: same split, same fee rules,
+same ledger. Relays hold a nutzap while nutsplit is offline; it catches up when it is back.
+
+```bash
+# once: nutsplit makes its nutzap key (data/nutzap.secret, 0600) and prints the kind:10019
+node bin/nutsplit.ts nutzap-info --nostr-pubkey npub1… --nutzap-relay wss://relay.example \
+  --mint https://testnut.cashu.space
+# sign that event with the show's Nostr key and publish it (e.g. with nak), and put the
+# printed <podcast:txt purpose="nostr">npub1…</podcast:txt> line in the feed. Then:
+node bin/nutsplit.ts serve --feed … --mint https://testnut.cashu.space \
+  --nostr-pubkey npub1… --nutzap-relay wss://relay.example [--boost-threshold 100]
+```
+
+nutsplit never holds the show's Nostr secret key. It needs the public key (nutzaps `p`-tag
+it) and keeps a separate key that nutzaps are locked to, as NIP-61 requires ("MUST NOT use
+the target user's main Nostr public key").
+
+**What it checks, before the mint is ever asked** (`src/nutzap.ts`): the event id is the
+hash of its content and the signature is the author's; it is a `kind:9321` that `p`-tags the
+show; its `u` mint is one the show lists (the relay filter already asks only for those, by
+`#u`); unit `sat`; at most 64 proofs, none over 4096 characters (refused, never shortened);
+every proof locked to nutsplit's key (`wrong_lock` otherwise; multisig or HTLC locks are
+`unsupported_lock`). Unlocked proofs are still taken, as Sovereigncast does, because whoever
+swaps them first owns them; the ledger marks them. A `guid` or NIP-73 `podcast:guid:` tag
+naming another podcast is `other_podcast`. DLEQ proofs, when present, are verified before the swap.
+
+**Which episode, boost or stream.** `episode_guid` or a NIP-73 `i` tag
+(`podcast:item:guid:…`) picks the episode; failing that, an exact `episode` title; failing
+that, the channel split. `ts` selects value-time-splits. A nutzap with a listener message,
+or of 100 sats or more, is a boost; anything else streams. The "Title · hh:mm:ss — "
+head the Nodesignal player puts in `content` is not a message (Sovereigncast's
+`_listener_message`, ported).
+
+**Exactly once.** Each event id gets one row in the ledger, claimed atomically before the
+swap, so the same event from several relays, or again after a restart, is redeemed once.
+Only events with a valid signature are written down: anyone can republish a copy of a nutzap
+with a broken signature, and that copy must not block the real one. The proofs also pass the
+token-hash check every intake uses, so the same proofs in a second event, or in a NUT-18
+POST, are booked once. Every event ends in one state, shown on the ledger page and in its
+JSON with the reason:
+
+| State | Meaning |
+|---|---|
+| `redeemed` | swapped and booked (with the credit id) |
+| `rejected` | failed a check above; the mint was not asked |
+| `duplicate` | its proofs were already booked under another credit |
+| `spent` | its proofs were spent before nutsplit asked: not ours to book |
+| `retry` | the mint did not answer; retried after 1, 2, 4 … minutes (at most 6 h) |
+| `unknown` | the swap may have happened but was not booked (crash, or an answer lost and then "spent" on retry); a NUT-09 restore would tell |
+
+On start, an event left half-way (`claiming`) is settled from the books and the mint: its
+proofs booked means redeemed, all unspent means retry, otherwise `unknown`. The relay
+subscription resumes from the newest event seen minus an hour (relays deliver late) and
+reconnects with backoff.
+
+### Nutzap demo
+
+`node demo/nutzap.ts`, run 2026-11-08 on `testnut.cashu.space` with throwaway keys made for
+the run (in `demo/out/nutzap/`, not in git, never printed) and a relay on 127.0.0.1
+(`test/local-relay.ts`); nothing is published to a public relay. The listener side reads
+the show's `kind:10019` from the relay and locks its ecash to the key it names, as a NIP-61
+app would.
+
+```
+Listener's app read the kind:10019: lock to 0209e61b3c4f5a…, mint https://testnut.cashu.space
+Published 15 kind:9321 events in 2.5 s: a 21-sat boost with a message, 10 streaming ticks of 5 sat (player head only), a silent 100 sat on E300,
+  one locked to someone else's key, the boost again, the boost's proofs in a new event, and one naming another mint.
+
+What nutsplit did with each event it received:
+  b4d352c165… boost 21     redeemed  credit #1
+  56e51380ca… 5 sat        redeemed  credit #2
+  …            (the other eight ticks the same, credits #3 to #11)
+  94ad858c3e… 100 sat      redeemed  credit #12
+  e9a44f9077… wrong key    rejected  wrong_lock
+  3065cfe051… same proofs  duplicate proofs already booked as credit 1
+  4bbf42d76d… other mint   not delivered (the relay filters #u: nutsplit never sees other mints)
+  the boost was delivered twice: redeemed, seen
+  the other-mint event handed to nutsplit directly: rejected (untrusted_mint: https://testnut.cashudevkit.org), mint not contacted
+Restart: the relay re-sent 14 events (since = newest seen − 1 h); new credits: 0.
+
+Booked: 12 credits, 2 boosts + 10 streaming, rail nip61, sender npub1ssfwkf8pm…
+    21 sat boost on Nodesignal-Buchclub - E301 "Danke für die Folge!": Nodesignal LN 17 + zettizettler 4
+   100 sat boost on Nodesignal-Spezial - E300: Nodesignal LN 60 + Thorsten ⚡️ 20 + Chris 20
+Settlement (episode-end cutoff):
+  zettizettler       14 sat  sent     fee 2 sat
+  Thorsten ⚡️        20 sat  sent     fee 2 sat
+  Chris              20 sat  sent     fee 2 sat
+  Nodesignal LN      96 sat  sent     fee 2 sat
+Books vs wallet: owed 1000 msat, wallet 1000 msat (match); nutzaps: 12 redeemed, 2 rejected, 1 duplicate
+```
+
+The ten streaming ticks carried only the player's "Title · 00:0x:00" head, so they were
+booked as streaming, not as ten boosts. The boost's message came through without the head.
+One boost from an earlier run the same day is kept as a test fixture (`test/fixtures/nutzap-testnut.json`,
+public events only): the tests check its signature, its lock against the `kind:10019` key and
+its DLEQ proofs against testnut's published keys, offline.
 
 ## Demo
 
@@ -220,12 +324,22 @@ nutsplit needs 2 sat of reserve (1 %). nutsplit has not been run against a mainn
 | `src/lnurl.ts`, `src/bolt11.ts` | LNURL-pay (Sovereigncast port), invoice amount check |
 | `src/mint.ts` | the mint interface and its cashu-ts 4.13 implementation |
 | `src/creq.ts`, `src/report.ts`, `src/listener.ts` | feed record, ledger page, test listener |
+| `src/nostr.ts` | NIP-01 events (hash, verify, sign), npub, a reconnecting relay subscription |
+| `src/nutzap.ts`, `src/nutzap-intake.ts` | NIP-61: kind:10019, nutzap checks and attribution; exactly-once redemption, recovery, the relay loop |
+| `test/local-relay.ts` | a NIP-01 relay on 127.0.0.1 for the tests and the nutzap demo |
 | `docs/sovereigncast-integration.md` | how this maps onto Sovereigncast's `ecash.py` |
 
 ## What is not done
 
 - **Mainnet.** Only test mints have been used. Nothing here has moved real money.
-- **Nutzaps (NIP-61) intake** is not built; only NUT-18 over HTTP is.
+- **Nutzaps** have run against testnut and a local relay only, not a public relay. nutsplit
+  does not publish the `kind:10019` (it holds no Nostr secret key; `nutzap-info` prints it
+  for the show to sign) and does not publish NIP-61 `kind:7376` redemption events, which
+  are authored by that same key; its record of what was redeemed is the ledger. A rejected
+  nutzap stays rejected: proofs locked to the show's key on a mint it does not list, or for
+  another podcast, are not redeemed. One show per nutzap key, like one process per show.
+  `serve` and `nutzap-info` refuse a mint whose info does not claim NUT-11 (P2PK), since such
+  a mint would let any reader of the public event spend the proofs; the claim is trusted.
 - **Keysend recipients** are shown as unpayable by mint. Paying them through an NWC wallet
   with `pay_keysend` is designed (ADR 0005 router) but not built.
 - **Spilman channel closes** are not credited yet.
