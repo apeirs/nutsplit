@@ -1,0 +1,58 @@
+Feed: Nodesignal - Deine Bitcoin-Frequenz (snapshot 2026-11-07, 331 items)
+  Nodesignal-Buchclub - E301: Nodesignal LN 80% (lnaddress), zettizettler 20% (lnaddress)
+  Nodesignal-Spezial - E300: Nodesignal LN 60% (lnaddress), Thorsten ⚡️ 20% (lnaddress), Chris 20% (lnaddress)
+  Nodesignal-Techboost - E299: Nodesignal 80% (node), zettizettler 20% (lnaddress)
+LNURL stand-in on 127.0.0.1:42477 for 4 of the feed's Lightning addresses; every other address is refused.
+nutsplit on http://127.0.0.1:36721, accepting https://testnut.cashu.space. Feed record it generates:
+  <podcast:txt purpose="cashu">creqAo2F0gaNhdGRwb3N0YWF4P2h0dHA6Ly8xMjcuMC4wLjE6MzY3MjEvcGF5L2U4ZGYwYjEzLTQ3ZGUtNTQ0YS05OWI3LWVjN2NiZDk2MGExNmFngGF1Y3NhdGFkeCNOb2Rlc2lnbmFsIC0gRGVpbmUgQml0Y29pbi1GcmVxdWVueg==</podcast:txt>
+
+A payment from https://testnut.cashudevkit.org: HTTP 400 {"success":false,"error":"untrusted_mint","accepted_mints":["https://testnut.cashu.space"]}
+50 stream payments of 5 sat on E301 + 4 boosts (21 and 100 on E301, 210 on E300, 100 on E299) POSTed in 20.4 s.
+  the 21-sat boost was booked as: Nodesignal LN 17 + zettizettler 4 sat
+  the 100-sat boost: Nodesignal LN 80 + zettizettler 20 sat
+
+Settlement pass, threshold 100 sat:
+  zettizettler       94 sat  waiting   (owed 94000 msat, below 100 sat)
+  Thorsten ⚡️        42 sat  waiting   (owed 42000 msat, below 100 sat)
+  Chris              42 sat  waiting   (owed 42000 msat, below 100 sat)
+  Nodesignal         80 sat  waiting   (owed 80000 msat, below 100 sat)
+  Nodesignal LN     348 sat  skipped   (fee up to 10 sat exceeds the 9 sat the fee payer's balance covers)
+Episode-end cutoff (pay every whole sat still owed):
+  zettizettler       94 sat  sent     fee 4 sat
+  Thorsten ⚡️        42 sat  sent     fee 2 sat
+  Chris              42 sat  sent     fee 2 sat
+  Nodesignal         80 sat  skipped   (unpayable by mint: keysend recipient, needs an NWC wallet with pay_keysend)
+  Nodesignal LN     352 sat  sent     fee 3 sat
+
+What the LNURL stand-ins were asked for (one invoice per recipient per batch):
+  nodesignal     349 sat  not used  comment: nutsplit: Nodesignal · E301, E300 · 3 boosts, 50 stream payments · "Danke für die Folge!" "Valido, ergo sum" "18 Jahre Bitcoin, Prost"
+  nodesignal     348 sat  not used  comment: nutsplit: Nodesignal · E301, E300 · 3 boosts, 50 stream payments · "Danke für die Folge!" "Valido, ergo sum" "18 Jahre Bitcoin, Prost"
+  zettizettler    94 sat  paid      comment: nutsplit: Nodesignal · E301, E299 · 3 boosts, 50 stream payments · "Danke für die Folge!" "Valido, ergo sum" "Gemischter Satz"
+  altbierjupp     42 sat  paid      comment: nutsplit: Nodesignal · E300 · 1 boost · "18 Jahre Bitcoin, Prost"
+  chrissha256     42 sat  paid      comment: nutsplit: Nodesignal · E300 · 1 boost · "18 Jahre Bitcoin, Prost"
+  nodesignal     355 sat  not used  comment: nutsplit: Nodesignal · E301, E300 · 3 boosts, 50 stream payments · "Danke für die Folge!" "Valido, ergo sum" "18 Jahre Bitcoin, Prost"
+  nodesignal     352 sat  paid      comment: nutsplit: Nodesignal · E301, E300 · 3 boosts, 50 stream payments · "Danke für die Folge!" "Valido, ergo sum" "18 Jahre Bitcoin, Prost"
+  ("not used": the show's first invoice, asked again smaller once the mint's real fee reserve was known)
+
+Ledger (http://127.0.0.1:36721/ledger/e8df0b13-47de-544a-99b7-ec7cbd960a16):
+  recipient         credited  paid  fees     owed  paid by
+  Nodesignal LN        423.0   352    65    6.000  melt to Lightning address
+  zettizettler          94.0    94     0    0.000  melt to Lightning address
+  Thorsten ⚡️           42.0    42     0    0.000  melt to Lightning address
+  Chris                 42.0    42     0    0.000  melt to Lightning address
+  Nodesignal            80.0     0     0   80.000  keysend: unpayable by mint, kept owed
+  received 681 sat in 54 payments; paid out 530 sat in 4 payouts; fees: 54 sat intake (one swap per payment), 11 sat payout
+  books vs wallet: owed 86000 msat, wallet 86000 msat (match)
+Payouts:
+  #6 Nodesignal LN   352 sat sent   fee 3 sat  hash 5ab49af6fbbc53ec…  preimage none (test mint returns none)
+  #4 Chris            42 sat sent   fee 2 sat  hash 9b4cb66391257de3…  preimage none (test mint returns none)
+  #3 Thorsten ⚡️      42 sat sent   fee 2 sat  hash 626772e10d4649b3…  preimage none (test mint returns none)
+  #2 zettizettler     94 sat sent   fee 4 sat  hash b2b358cdd7b741af…  preimage none (test mint returns none)
+
+Fee reserve a melt needs on testnut (real quotes): 1 sat → 1, 4 sat → 1, 17 sat → 1, 74 sat → 1, 230 sat → 4, 297 sat → 5
+  per listener, each 5-sat tick split 80/20 is two melts (4 + 1 sat): 2 sat of reserve for 5 sat sent
+  measured: three 5-sat ticks paid per listener cost 5, 6, 6 sat in fees each (two melts per tick)
+  nutsplit: 4 melts for 530 sat paid, 11 sat payout fees (2.1 %), plus 1 sat intake swap per payment (54 sat)
+  the 50 ticks, all fees counted: per listener ≈ 283 sat (3 measured × 50); via nutsplit 50 sat in the listener's wallet + 50 sat intake + a share of the 11 sat payout fees
+
+Wrote demo/out/ledger.html and demo/out/ledger.json.

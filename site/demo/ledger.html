@@ -1,0 +1,173 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Split ledger · Nodesignal - Deine Bitcoin-Frequenz</title>
+<style>
+:root{--bg:#fbfaf7;--fg:#1d1d1b;--muted:#6b6a65;--line:#e4e1d8;--card:#fff;--accent:#7a4f00;--ok:#1f6f3f;--warn:#9a3d00;--unk:#6a3fa0}
+@media (prefers-color-scheme:dark){:root{--bg:#141413;--fg:#ecebe6;--muted:#a19f97;--line:#2e2d2a;--card:#1c1c1a;--accent:#f0b65a;--ok:#6fcf97;--warn:#f2994a;--unk:#bb8fe8}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.45 system-ui,-apple-system,Segoe UI,sans-serif}
+main{max-width:1060px;margin:0 auto;padding:24px 16px 48px}h1{font-size:22px;margin:0 0 4px}h2{font-size:16px;margin:28px 0 8px}
+a{color:var(--accent)}.muted{color:var(--muted)}code{font:12px ui-monospace,SFMono-Regular,Menlo,monospace}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:16px 0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px 12px}.card b{display:block;font-size:20px}
+.wrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--card)}
+table{border-collapse:collapse;width:100%;min-width:640px}th,td{padding:7px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{font-size:12px;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);font-weight:600}tr:last-child td{border-bottom:0}
+.n{text-align:right;font-variant-numeric:tabular-nums}.tag{font-size:11px;border:1px solid var(--accent);color:var(--accent);border-radius:4px;padding:0 4px}
+.warn{color:var(--warn)}.st{font-size:12px;font-weight:600}.st-sent{color:var(--ok)}.st-unknown{color:var(--unk)}.st-failed,.st-skipped{color:var(--warn)}
+ul.rules{padding-left:18px}ul.rules li{margin:2px 0}
+</style></head><body><main>
+<h1>Nodesignal - Deine Bitcoin-Frequenz</h1>
+<div class="muted">Split ledger · podcast:guid <code>e8df0b13-47de-544a-99b7-ec7cbd960a16</code> · <a href="ledger.json">JSON</a></div>
+<div class="cards">
+<div class="card"><span class="muted">received</span><b>681 sat</b><span class="muted">54 payments, 4 boosts</span></div>
+<div class="card"><span class="muted">paid out</span><b>530 sat</b><span class="muted">to the feed's recipients</span></div>
+<div class="card"><span class="muted">fees</span><b>65 sat</b><span class="muted">54 intake, 11 payout</span></div>
+<div class="card"><span class="muted">still owed</span><b>86 sat</b><span class="muted">books match the wallet</span></div>
+</div>
+<h2>Recipients</h2>
+<div class="wrap"><table><thead><tr><th>Recipient</th><th class="n">Credited</th><th class="n">Paid</th><th class="n">Fees borne</th><th class="n">Owed</th><th>How it is paid</th></tr></thead><tbody><tr>
+    <td><b>Nodesignal LN</b><br><code>nodesignal@getalby.com</code> <span class="tag">pays fees</span></td>
+    <td class="n">423</td>
+    <td class="n">352</td>
+    <td class="n">65</td>
+    <td class="n">6</td>
+    <td>Lightning address (melt)</td>
+  </tr><tr>
+    <td><b>zettizettler</b><br><code>zettizettler@getalby.com</code></td>
+    <td class="n">94</td>
+    <td class="n">94</td>
+    <td class="n">0</td>
+    <td class="n">0</td>
+    <td>Lightning address (melt)</td>
+  </tr><tr>
+    <td><b>Thorsten ⚡️</b><br><code>altbierjupp@getalby.com</code></td>
+    <td class="n">42</td>
+    <td class="n">42</td>
+    <td class="n">0</td>
+    <td class="n">0</td>
+    <td>Lightning address (melt)</td>
+  </tr><tr>
+    <td><b>Chris</b><br><code>chrissha256@getalby.com</code></td>
+    <td class="n">42</td>
+    <td class="n">42</td>
+    <td class="n">0</td>
+    <td class="n">0</td>
+    <td>Lightning address (melt)</td>
+  </tr><tr>
+    <td><b>Nodesignal</b><br><code>02d0fd6c2ec89f…36d7bca2</code> <span class="muted">696969=2</span></td>
+    <td class="n">80</td>
+    <td class="n">0</td>
+    <td class="n">0</td>
+    <td class="n">80</td>
+    <td><span class="warn">keysend: a mint cannot pay it; kept owed, not redistributed</span></td>
+  </tr></tbody></table></div>
+<p class="muted">Amounts in sats; credited and owed to the millisat. Fee policy: <b>show</b> (the show's own balance carries every fee, so other recipients get their exact share).</p>
+<h2>Payouts</h2>
+<div class="wrap"><table><thead><tr><th>#</th><th>To</th><th class="n">Sats</th><th>State</th><th class="n">Fee</th><th>Payment hash</th><th>Note</th></tr></thead><tbody><tr>
+    <td>#6</td><td>Nodesignal LN</td><td class="n">352</td>
+    <td><span class="st st-sent">sent</span></td>
+    <td class="n">3</td>
+    <td><code title="5ab49af6fbbc53ec054982149b78a28d6a2a1d08a1af4367cf2ebd267a575b51">5ab49af6fbbc53ec…</code></td>
+    <td class="muted"></td>
+  </tr><tr>
+    <td>#5</td><td>Nodesignal</td><td class="n">80</td>
+    <td><span class="st st-skipped">skipped</span></td>
+    <td class="n"></td>
+    <td></td>
+    <td class="muted">unpayable by mint: keysend recipient, needs an NWC wallet with pay_keysend</td>
+  </tr><tr>
+    <td>#4</td><td>Chris</td><td class="n">42</td>
+    <td><span class="st st-sent">sent</span></td>
+    <td class="n">2</td>
+    <td><code title="9b4cb66391257de3c4aa7b796ed52115d25396deed38e10b312f2a7af996aede">9b4cb66391257de3…</code></td>
+    <td class="muted"></td>
+  </tr><tr>
+    <td>#3</td><td>Thorsten ⚡️</td><td class="n">42</td>
+    <td><span class="st st-sent">sent</span></td>
+    <td class="n">2</td>
+    <td><code title="626772e10d4649b3d5b944e2303e19fb271375dff1ca259a4fc903a46b3651e7">626772e10d4649b3…</code></td>
+    <td class="muted"></td>
+  </tr><tr>
+    <td>#2</td><td>zettizettler</td><td class="n">94</td>
+    <td><span class="st st-sent">sent</span></td>
+    <td class="n">4</td>
+    <td><code title="b2b358cdd7b741af9cab924bad4965efce57064c9c852a323e235b71b51ad87a">b2b358cdd7b741af…</code></td>
+    <td class="muted"></td>
+  </tr><tr>
+    <td>#1</td><td>Nodesignal LN</td><td class="n">357</td>
+    <td><span class="st st-skipped">skipped</span></td>
+    <td class="n"></td>
+    <td></td>
+    <td class="muted">fee up to 10 sat exceeds the 9 sat the fee payer&apos;s balance covers</td>
+  </tr></tbody></table></div>
+<h2>Latest payments in <span class="muted">(20 of 54; the latest 200 in the JSON)</span></h2>
+<div class="wrap"><table><thead><tr><th>Time (UTC)</th><th>Kind</th><th class="n">Sats</th><th>Episode</th><th>Message</th></tr></thead><tbody><tr>
+    <td>06:59:39</td><td>boost</td><td class="n">100</td>
+    <td>Nodesignal-Techboost - E299 - Gemischter Satz (Schwerpunkte </td><td>Gemischter Satz</td>
+  </tr><tr>
+    <td>06:59:39</td><td>boost</td><td class="n">210</td>
+    <td>Nodesignal-Spezial - E300 - 18 Jahre Bitcoin Whitepaper</td><td>18 Jahre Bitcoin, Prost</td>
+  </tr><tr>
+    <td>06:59:38</td><td>boost</td><td class="n">100</td>
+    <td>Nodesignal-Buchclub - E301 - Cryptoeconomics #7 - Valido, er</td><td>Valido, ergo sum</td>
+  </tr><tr>
+    <td>06:59:37</td><td>boost</td><td class="n">21</td>
+    <td>Nodesignal-Buchclub - E301 - Cryptoeconomics #7 - Valido, er</td><td>Danke für die Folge!</td>
+  </tr><tr>
+    <td>06:59:37</td><td>stream</td><td class="n">5</td>
+    <td>Nodesignal-Buchclub - E301 - Cryptoeconomics #7 - Valido, er</td><td></td>
+  </tr><tr>
+    <td>06:59:36</td><td>stream</td><td class="n">5</td>
+    <td>Nodesignal-Buchclub - E301 - Cryptoeconomics #7 - Valido, er</td><td></td>
+  </tr><tr>
+    <td>06:59:36</td><td>stream</td><td class="n">5</td>
+    <td>Nodesignal-Buchclub - E301 - Cryptoeconomics #7 - Valido, er</td><td></td>
+  </tr><tr>
+    <td>06:59:35</td><td>stream</td><td class="n">5</td>
+    <td>Nodesignal-Buchclub - E301 - Cryptoeconomics #7 - Valido, er</td><td></td>
+  </tr><tr>
+    <td>06:59:35</td><td>stream</td><td class="n">5</td>
+    <td>Nodesignal-Buchclub - E301 - Cryptoeconomics #7 - Valido, er</td><td></td>
+  </tr><tr>
+    <td>06:59:35</td><td>stream</td><td class="n">5</td>
+    <td>Nodesignal-Buchclub - E301 - Cryptoeconomics #7 - Valido, er</td><td></td>
+  </tr><tr>
+    <td>06:59:34</td><td>stream</td><td class="n">5</td>
+    <td>Nodesignal-Buchclub - E301 - Cryptoeconomics #7 - Valido, er</td><td></td>
+  </tr><tr>
+    <td>06:59:34</td><td>stream</td><td class="n">5</td>
+    <td>Nodesignal-Buchclub - E301 - Cryptoeconomics #7 - Valido, er</td><td></td>
+  </tr><tr>
+    <td>06:59:34</td><td>stream</td><td class="n">5</td>
+    <td>Nodesignal-Buchclub - E301 - Cryptoeconomics #7 - Valido, er</td><td></td>
+  </tr><tr>
+    <td>06:59:33</td><td>stream</td><td class="n">5</td>
+    <td>Nodesignal-Buchclub - E301 - Cryptoeconomics #7 - Valido, er</td><td></td>
+  </tr><tr>
+    <td>06:59:33</td><td>stream</td><td class="n">5</td>
+    <td>Nodesignal-Buchclub - E301 - Cryptoeconomics #7 - Valido, er</td><td></td>
+  </tr><tr>
+    <td>06:59:33</td><td>stream</td><td class="n">5</td>
+    <td>Nodesignal-Buchclub - E301 - Cryptoeconomics #7 - Valido, er</td><td></td>
+  </tr><tr>
+    <td>06:59:32</td><td>stream</td><td class="n">5</td>
+    <td>Nodesignal-Buchclub - E301 - Cryptoeconomics #7 - Valido, er</td><td></td>
+  </tr><tr>
+    <td>06:59:32</td><td>stream</td><td class="n">5</td>
+    <td>Nodesignal-Buchclub - E301 - Cryptoeconomics #7 - Valido, er</td><td></td>
+  </tr><tr>
+    <td>06:59:31</td><td>stream</td><td class="n">5</td>
+    <td>Nodesignal-Buchclub - E301 - Cryptoeconomics #7 - Valido, er</td><td></td>
+  </tr><tr>
+    <td>06:59:31</td><td>stream</td><td class="n">5</td>
+    <td>Nodesignal-Buchclub - E301 - Cryptoeconomics #7 - Valido, er</td><td></td>
+  </tr></tbody></table></div>
+
+<h2>Rules</h2>
+<ul class="rules muted">
+<li>Each payment is split by the episode's <code>podcast:value</code> block (the channel's if the episode has none), with value-time-splits by playback position.</li>
+<li>Boosts split in whole sats by largest remainder (21 sats at 80/20 are 17 + 4); streaming splits to the millisat and the rest carries.</li>
+<li>A recipient is paid in one Lightning payment once its balance passes the threshold, so fees are paid once per batch, not once per listener.</li>
+<li>A share that cannot be paid is shown and kept, never given to the others.</li>
+<li>Every payout is written down before the mint is asked; an unknown outcome is never paid again, only settled from the mint's record.</li>
+</ul>
+</main></body></html>

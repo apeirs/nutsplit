@@ -11,5 +11,5 @@
     "skipLibCheck": true,
     "types": ["node"]
   },
-  "include": ["src", "bin", "demo", "test", "spikes"]
+  "include": ["src", "bin", "demo", "test", "spikes", "site/build.ts"]
 }

@@ -1,0 +1,39 @@
+Show: Nodesignal - Deine Bitcoin-Frequenz, Nostr npub1hteay05de6g… (throwaway), relay ws://127.0.0.1:38173 (local).
+Its kind:10019, signed by the show's key: relay ws://127.0.0.1:38173, mint https://testnut.cashu.space (sat), nutzap pubkey 025ef517c05dfc… (nutsplit's own key, not the Nostr key)
+nutsplit subscribed: kinds [9321], #p [show], #u [https://testnut.cashu.space]
+
+Listener's app read the kind:10019: lock to 025ef517c05dfc…, mint https://testnut.cashu.space
+Published 15 kind:9321 events in 4.3 s: a 21-sat boost with a message, 10 streaming ticks of 5 sat (player head only), a silent 100 sat on E300,
+  one locked to someone else's key, the boost again, the boost's proofs in a new event, and one naming another mint.
+
+What nutsplit did with each event it received:
+  b8237d4baf… boost 21     redeemed  credit #1
+  f69217d03c… 5 sat        redeemed  credit #2
+  56aa613125… 5 sat        redeemed  credit #3
+  165ede1af8… 5 sat        redeemed  credit #4
+  0921bcc355… 5 sat        redeemed  credit #5
+  3c833818ae… 5 sat        redeemed  credit #6
+  2581d5ce84… 5 sat        redeemed  credit #7
+  8482add99e… 5 sat        redeemed  credit #8
+  cb0ccc73fc… 5 sat        redeemed  credit #9
+  cbc816429c… 5 sat        redeemed  credit #10
+  32d3e7e490… 5 sat        redeemed  credit #11
+  cda08da535… 100 sat      redeemed  credit #12
+  104e66e85a… wrong key    rejected  wrong_lock
+  8d6e48ddec… same proofs  duplicate proofs already booked as credit 1
+  f33ca36a9a… other mint   not delivered (the relay filters #u: nutsplit never sees other mints)
+  the boost was delivered twice: redeemed, seen
+  the other-mint event handed to nutsplit directly: rejected (untrusted_mint: https://testnut.cashudevkit.org), mint not contacted
+Restart: the relay re-sent 14 events (since = newest seen − 1 h); new credits: 0.
+
+Booked: 12 credits, 2 boosts + 10 streaming, rail nip61, sender npub1eqf08xh5y…
+    21 sat boost on Nodesignal-Buchclub - E301 "Danke für die Folge!": Nodesignal LN 17 + zettizettler 4
+   100 sat boost on Nodesignal-Spezial - E300: Nodesignal LN 60 + Thorsten ⚡️ 20 + Chris 20
+Settlement (episode-end cutoff):
+  zettizettler       14 sat  sent     fee 2 sat
+  Thorsten ⚡️        20 sat  sent     fee 2 sat
+  Chris              20 sat  sent     fee 2 sat
+  Nodesignal LN      96 sat  sent     fee 2 sat
+Books vs wallet: owed 1000 msat, wallet 1000 msat (match); nutzaps: 12 redeemed, 2 rejected, 1 duplicate
+
+Wrote demo/out/nutzap/ledger.html, ledger.json and events.json (the public events only).
